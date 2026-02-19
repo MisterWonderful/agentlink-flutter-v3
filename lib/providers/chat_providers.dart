@@ -185,6 +185,7 @@ class ChatNotifier extends Notifier<Map<String, ChatState>> {
           ref
               .read(logProvider.notifier)
               .addEntry(agentId, 'WS', 'Run complete.');
+          _subscriptions[agentId]?.cancel();
           _subscriptions.remove(agentId);
           break;
         case OpenClawEventType.error:
@@ -192,6 +193,7 @@ class ChatNotifier extends Notifier<Map<String, ChatState>> {
           ref
               .read(logProvider.notifier)
               .addEntry(agentId, 'ERR', 'WS Error: ${event.data}');
+          _subscriptions[agentId]?.cancel();
           _subscriptions.remove(agentId);
           break;
         case OpenClawEventType.toolLog:
