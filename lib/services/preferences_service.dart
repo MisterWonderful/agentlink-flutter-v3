@@ -16,6 +16,7 @@ class PreferencesService {
   static const _keyFontSize = 'font_size';
   static const _keyDevMode = 'dev_mode';
   static const _keyPerfOverlay = 'perf_overlay';
+  static const _keyVerboseLevel = 'verbose_level';
 
   ThemeMode getTheme() {
     final val = _prefs.getString(_keyTheme);
@@ -37,6 +38,9 @@ class PreferencesService {
 
   bool getPerfOverlay() => _prefs.getBool(_keyPerfOverlay) ?? false;
   Future<void> setPerfOverlay(bool val) => _prefs.setBool(_keyPerfOverlay, val);
+
+  int getVerboseLevel() => _prefs.getInt(_keyVerboseLevel) ?? 1;
+  Future<void> setVerboseLevel(int level) => _prefs.setInt(_keyVerboseLevel, level);
 }
 
 final preferencesServiceProvider = Provider<PreferencesService>((ref) {

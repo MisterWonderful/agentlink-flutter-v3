@@ -12,5 +12,9 @@ final healthServiceProvider = Provider<HealthService>((ref) {
 });
 
 final openClawServiceProvider = Provider<OpenClawService>((ref) {
-  return OpenClawService();
+  final service = OpenClawService();
+  ref.onDispose(() {
+    service.disconnect();
+  });
+  return service;
 });

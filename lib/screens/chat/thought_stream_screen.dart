@@ -5,7 +5,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/chat_providers.dart';
 
-/// Shows the raw "thinking" trace from the agent (e.g. <think> content).
+/// Shows the raw "thinking" trace from the agent (e.g. `<think>` content).
 class ThoughtStreamScreen extends ConsumerWidget {
   final String agentId;
   const ThoughtStreamScreen({super.key, required this.agentId});

@@ -78,3 +78,21 @@ class PerformanceOverlayNotifier extends Notifier<bool> {
   }
 }
 final showPerformanceOverlayProvider = NotifierProvider<PerformanceOverlayNotifier, bool>(PerformanceOverlayNotifier.new);
+
+// Verbose Level (0=silent, 1=normal, 2=verbose)
+class VerboseLevelNotifier extends Notifier<int> {
+  @override
+  int build() {
+    try {
+      return ref.watch(preferencesServiceProvider).getVerboseLevel();
+    } catch (_) {
+      return 1;
+    }
+  }
+
+  void set(int level) {
+    state = level;
+    ref.read(preferencesServiceProvider).setVerboseLevel(level);
+  }
+}
+final verboseLevelProvider = NotifierProvider<VerboseLevelNotifier, int>(VerboseLevelNotifier.new);

@@ -169,6 +169,25 @@ class SettingsScreen extends ConsumerWidget {
                   onChanged: (val) => ref.read(showPerformanceOverlayProvider.notifier).set(val),
                 ),
               ),
+              const SizedBox(height: 8),
+              _SettingsTile(
+                icon: Icons.tune,
+                label: 'Verbose Level',
+                trailing: DropdownButton<int>(
+                  value: ref.watch(verboseLevelProvider),
+                  dropdownColor: AppColors.surface,
+                  underline: const SizedBox(),
+                  style: GoogleFonts.inter(color: AppColors.textPrimary),
+                  items: const [
+                    DropdownMenuItem(value: 0, child: Text('Silent')),
+                    DropdownMenuItem(value: 1, child: Text('Normal')),
+                    DropdownMenuItem(value: 2, child: Text('Verbose')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) ref.read(verboseLevelProvider.notifier).set(val);
+                  },
+                ),
+              ),
             ],
 
             const SizedBox(height: 32),
