@@ -157,7 +157,7 @@ class OpenClawService {
     } else if (Platform.isMacOS) {
       clientId = 'openclaw-macos';
     } else {
-      clientId = 'openclaw-flutter';
+      clientId = 'webchat';
     }
 
     final handshake = {
