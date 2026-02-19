@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:uuid/uuid.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../models/agent.dart';
+import 'device_identity_service.dart';
 
 class OpenClawService {
   final _uuid = const Uuid();
@@ -17,9 +18,11 @@ class OpenClawService {
   // Track pending requests by ID to resolve futures
   final _pendingRequests = <String, Completer<Map<String, dynamic>>>{};
 
+  // Device identity for handshake signing
+  final DeviceIdentityService _deviceIdentity = DeviceIdentityService();
+
   // Session state
   String _sessionKey = 'main';
-  String? _deviceId;
   bool _isConnected = false;
   Timer? _keepAliveTimer;
 
@@ -47,9 +50,9 @@ class OpenClawService {
     if (_isConnected) return;
 
     try {
+      await _deviceIdentity.load();
       final wsUrl = Uri.parse(agent.config.baseUrl);
       _channel = WebSocketChannel.connect(wsUrl);
-      _deviceId = agent.config.deviceId;
       _sessionKey = agent.config.sessionKey ?? 'main';
       _lastAgent = agent;
       _reconnectAttempts = 0;
@@ -146,44 +149,36 @@ class OpenClawService {
     }
   }
 
-  // Fix 1+2: Platform-specific client ID, mode: "ui", caps field
-  void _sendHandshake(Map<String, dynamic> challenge, Agent agent) {
+  // Ed25519 device signing - matches server buildDeviceAuthPayload v2
+  Future<void> _sendHandshake(Map<String, dynamic> challenge, Agent agent) async {
     final requestId = _uuid.v4();
-
     String clientId;
-    if (Platform.isIOS) {
-      clientId = 'openclaw-ios';
-    } else if (Platform.isAndroid) {
-      clientId = 'openclaw-android';
-    } else if (Platform.isMacOS) {
-      clientId = 'openclaw-macos';
-    } else {
-      clientId = 'webchat';
-    }
-
+    if (Platform.isIOS) { clientId = 'openclaw-ios'; }
+    else if (Platform.isAndroid) { clientId = 'openclaw-android'; }
+    else if (Platform.isMacOS) { clientId = 'openclaw-macos'; }
+    else { clientId = 'webchat'; }
+    const role = 'operator';
+    const scopes = ['operator.read', 'operator.write'];
+    final token = agent.config.apiKey ?? '';
+    final nonce = challenge['nonce'] as String? ?? '';
+    final signedAt = DateTime.now().millisecondsSinceEpoch;
+    final deviceId = _deviceIdentity.deviceId;
+    final publicKey = _deviceIdentity.publicKeyBase64Url;
+    final payload = DeviceIdentityService.buildPayload(
+      deviceId: deviceId, clientId: clientId, clientMode: 'ui',
+      role: role, scopes: scopes, signedAtMs: signedAt, token: token, nonce: nonce,
+    );
+    final signature = await _deviceIdentity.signPayload(payload);
     final handshake = {
-      "type": "req",
-      "id": requestId,
-      "method": "connect",
+      "type": "req", "id": requestId, "method": "connect",
       "params": {
-        "minProtocol": 3,
-        "maxProtocol": 3,
-        "client": {
-          "id": clientId,
-          "version": "0.1.0",
-          "platform": "flutter",
-          "mode": "ui",
-        },
-        "caps": ["tool-events"],
-        "role": "operator",
-        "scopes": ["operator.read", "operator.write"],
-        "auth": {"token": agent.config.apiKey ?? "dev-token"},
-        "device": {
-          "id": _deviceId ?? "dev-device",
-        }
+        "minProtocol": 3, "maxProtocol": 3,
+        "client": {"id": clientId, "version": "0.1.0", "platform": "flutter", "mode": "ui"},
+        "caps": ["tool-events"], "role": role, "scopes": scopes,
+        "auth": {"token": token},
+        "device": {"id": deviceId, "publicKey": publicKey, "signature": signature, "signedAt": signedAt, "nonce": nonce},
       }
     };
-
     _sendRequest(requestId, handshake);
   }
 
