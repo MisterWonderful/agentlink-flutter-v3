@@ -19,6 +19,8 @@ class AgentConfig {
   final String systemPrompt;
   final String contextInfo;
   final String deviceId;
+  final String? thinkingLevel;  // 'off' | 'low' | 'high' (OpenClaw only)
+  final String? sessionKey;     // null = use default 'main' (OpenClaw only)
 
   const AgentConfig({
     required this.id,
@@ -31,6 +33,8 @@ class AgentConfig {
     this.systemPrompt = '',
     this.contextInfo = '',
     this.deviceId = '',
+    this.thinkingLevel,
+    this.sessionKey,
   });
 
   AgentConfig copyWith({
@@ -44,6 +48,8 @@ class AgentConfig {
     String? systemPrompt,
     String? contextInfo,
     String? deviceId,
+    String? thinkingLevel,
+    String? sessionKey,
   }) {
     return AgentConfig(
       id: id ?? this.id,
@@ -56,6 +62,8 @@ class AgentConfig {
       systemPrompt: systemPrompt ?? this.systemPrompt,
       contextInfo: contextInfo ?? this.contextInfo,
       deviceId: deviceId ?? this.deviceId,
+      thinkingLevel: thinkingLevel ?? this.thinkingLevel,
+      sessionKey: sessionKey ?? this.sessionKey,
     );
   }
 }

@@ -225,10 +225,11 @@ class ChatNotifier extends Notifier<Map<String, ChatState>> {
       }
     });
 
+    final thinking = agent.config.thinkingLevel ?? 'low';
     ref
         .read(logProvider.notifier)
         .addEntry(agentId, 'WS', '>> chat.send: "$content"');
-    await service.sendChatMessage(content, attachments: attachments);
+    await service.sendChatMessage(content, thinking: thinking, attachments: attachments);
   }
 
   // Fix 3: Directly append thinking content without tag parsing

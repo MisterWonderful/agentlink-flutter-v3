@@ -25,8 +25,12 @@ class _AddAgentScreenState extends ConsumerState<AddAgentScreen> {
   final _apiKeyController = TextEditingController();
   final _modelController = TextEditingController();
   final _systemPromptController = TextEditingController();
+  final _sessionKeyController = TextEditingController();
 
   AgentType _selectedType = AgentType.openaiCompatible;
+  String _selectedThinkingLevel = 'low';
+
+  bool get _isOpenClaw => _selectedType == AgentType.openClaw;
   
   // Test State
   bool _isTesting = false;
@@ -40,6 +44,7 @@ class _AddAgentScreenState extends ConsumerState<AddAgentScreen> {
     _apiKeyController.dispose();
     _modelController.dispose();
     _systemPromptController.dispose();
+    _sessionKeyController.dispose();
     super.dispose();
   }
 
@@ -96,6 +101,10 @@ class _AddAgentScreenState extends ConsumerState<AddAgentScreen> {
       modelName: _modelController.text.isNotEmpty ? _modelController.text.trim() : null,
       systemPrompt: _systemPromptController.text.isNotEmpty ? _systemPromptController.text.trim() : '',
       deviceId: _selectedType == AgentType.openClaw ? const Uuid().v4() : '',
+      thinkingLevel: _isOpenClaw ? _selectedThinkingLevel : null,
+      sessionKey: (_isOpenClaw && _sessionKeyController.text.isNotEmpty)
+          ? _sessionKeyController.text.trim()
+          : null,
     );
 
     final newAgent = Agent(
@@ -128,8 +137,7 @@ class _AddAgentScreenState extends ConsumerState<AddAgentScreen> {
           if (_modelController.text.isEmpty) _modelController.text = 'claude-3-5-sonnet-20240620';
           break;
         case AgentType.openClaw:
-          if (_urlController.text.isEmpty) _urlController.text = 'ws://localhost:18789';
-          if (_modelController.text.isEmpty) _modelController.text = 'autodetect';
+          if (_urlController.text.isEmpty) _urlController.text = 'wss://nomi.unschackle.com';
           break;
         case AgentType.custom:
           break;
@@ -217,37 +225,85 @@ class _AddAgentScreenState extends ConsumerState<AddAgentScreen> {
               ),
               const SizedBox(height: 24),
 
-              // API Key (Optional)
-              Text('API Key (Optional)', style: _labelStyle),
+              // API Key / Gateway Token
+              Text(
+                _isOpenClaw ? 'Gateway Token (Optional)' : 'API Key (Optional)',
+                style: _labelStyle,
+              ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _apiKeyController,
                 style: _inputStyle,
                 obscureText: true,
-                decoration: _inputDecoration('sk-...'),
+                decoration: _inputDecoration(_isOpenClaw ? 'gw-...' : 'sk-...'),
               ),
               const SizedBox(height: 24),
 
-              // Model Name (Optional)
-              Text('Model Name', style: _labelStyle),
+              // Model Name (hidden for OpenClaw)
+              if (!_isOpenClaw) ...[
+                Text('Model Name', style: _labelStyle),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _modelController,
+                  style: _inputStyle,
+                  decoration: _inputDecoration('e.g. gpt-4o'),
+                ),
+                const SizedBox(height: 24),
+              ],
+
+              // System Prompt (hidden for OpenClaw)
+              if (!_isOpenClaw) ...[
+                Text('System Instruction', style: _labelStyle),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _systemPromptController,
+                  style: _inputStyle,
+                  maxLines: 3,
+                  decoration: _inputDecoration('You are a helpful assistant...'),
+                ),
+                const SizedBox(height: 24),
+              ],
+
+              // OpenClaw-only: Thinking Level
+              if (_isOpenClaw) ...[
+                Text('Thinking Level', style: _labelStyle),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: _fieldDecoration,
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedThinkingLevel,
+                      isExpanded: true,
+                      dropdownColor: AppColors.surface,
+                      style: GoogleFonts.inter(color: AppColors.textPrimary),
+                      items: const [
+                        DropdownMenuItem(value: 'off', child: Text('Off')),
+                        DropdownMenuItem(value: 'low', child: Text('Low')),
+                        DropdownMenuItem(value: 'high', child: Text('High')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setState(() => _selectedThinkingLevel = val);
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+
+              // OpenClaw-only: Session Key
+              if (_isOpenClaw) ...[
+                Text('Session Key', style: _labelStyle),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _sessionKeyController,
+                  style: _inputStyle,
+                  decoration: _inputDecoration('main'),
+                ),
+                const SizedBox(height: 24),
+              ],
+
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _modelController,
-                style: _inputStyle,
-                decoration: _inputDecoration('e.g. gpt-4o'),
-              ),
-              const SizedBox(height: 24),
-              
-              // System Prompt (Optional)
-              Text('System Instruction', style: _labelStyle),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _systemPromptController,
-                style: _inputStyle,
-                maxLines: 3,
-                decoration: _inputDecoration('You are a helpful assistant...'),
-              ),
-              const SizedBox(height: 32),
 
               // Test Connection
               OutlinedButton(

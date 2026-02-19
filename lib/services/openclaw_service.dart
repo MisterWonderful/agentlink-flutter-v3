@@ -50,6 +50,7 @@ class OpenClawService {
       final wsUrl = Uri.parse(agent.config.baseUrl);
       _channel = WebSocketChannel.connect(wsUrl);
       _deviceId = agent.config.deviceId;
+      _sessionKey = agent.config.sessionKey ?? 'main';
       _lastAgent = agent;
       _reconnectAttempts = 0;
 

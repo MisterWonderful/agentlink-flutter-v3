@@ -1,5 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:web_socket_channel/web_socket_channel.dart';
 import '../models/agent.dart';
 import '../models/agent_config.dart';
 
@@ -53,6 +56,10 @@ class HealthService {
   }
 
   Future<bool> _ping(String baseUrl, AgentType type, String? apiKey) async {
+    if (type == AgentType.openClaw) {
+      return _pingOpenClaw(baseUrl);
+    }
+
     try {
       Uri url;
       switch (type) {
@@ -60,18 +67,15 @@ class HealthService {
           url = Uri.parse('$baseUrl/v1/models');
           break;
         case AgentType.ollama:
-           // Ollama has a specific version endpoint or tags
-          url = Uri.parse('$baseUrl/api/tags'); 
+          url = Uri.parse('$baseUrl/api/tags');
           break;
         case AgentType.anthropicCompatible:
-          // Anthropic requires auth even for models list usually
-          url = Uri.parse('$baseUrl/v1/models'); // Placeholder, might need different endpoint
-          break;
-        case AgentType.openClaw:
-          // Assuming http health endpoint exists
-          url = Uri.parse('${baseUrl.replaceFirst('ws', 'http')}/health');
+          url = Uri.parse('$baseUrl/v1/models');
           break;
         case AgentType.custom:
+          url = Uri.parse('$baseUrl/health');
+          break;
+        default:
           url = Uri.parse('$baseUrl/health');
           break;
       }
@@ -79,13 +83,52 @@ class HealthService {
       final response = await _client.get(
         url,
         headers: apiKey != null && apiKey.isNotEmpty
-          ? {'Authorization': 'Bearer $apiKey'} 
+          ? {'Authorization': 'Bearer $apiKey'}
           : {},
       ).timeout(const Duration(seconds: 5));
 
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (e) {
       return false;
+    }
+  }
+
+  Future<bool> _pingOpenClaw(String baseUrl) async {
+    WebSocketChannel? channel;
+    StreamSubscription? subscription;
+    try {
+      final wsUrl = Uri.parse(baseUrl);
+      channel = WebSocketChannel.connect(wsUrl);
+
+      final completer = Completer<bool>();
+      subscription = channel.stream.listen(
+        (message) {
+          if (message is String) {
+            try {
+              final data = jsonDecode(message) as Map<String, dynamic>;
+              if (data['type'] == 'event' && data['event'] == 'connect.challenge') {
+                if (!completer.isCompleted) completer.complete(true);
+              }
+            } catch (_) {}
+          }
+        },
+        onError: (_) {
+          if (!completer.isCompleted) completer.complete(false);
+        },
+        onDone: () {
+          if (!completer.isCompleted) completer.complete(false);
+        },
+      );
+
+      return await completer.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => false,
+      );
+    } catch (e) {
+      return false;
+    } finally {
+      await subscription?.cancel();
+      channel?.sink.close();
     }
   }
 }

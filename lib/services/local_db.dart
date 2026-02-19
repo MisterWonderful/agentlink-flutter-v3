@@ -31,7 +31,7 @@ class LocalDb {
 
     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         // Agents Table
         await db.execute('''
@@ -46,6 +46,8 @@ class LocalDb {
             system_prompt TEXT,
             context_info TEXT,
             device_id TEXT,
+            thinking_level TEXT,
+            session_key TEXT,
             version TEXT,
             latency_ms INTEGER,
             status TEXT,
@@ -79,6 +81,12 @@ class LocalDb {
             FOREIGN KEY (agent_id) REFERENCES agents (id) ON DELETE CASCADE
           )
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE agents ADD COLUMN thinking_level TEXT');
+          await db.execute('ALTER TABLE agents ADD COLUMN session_key TEXT');
+        }
       },
     );
   }
@@ -183,6 +191,8 @@ class LocalDb {
       systemPrompt: row['system_prompt'] as String? ?? '',
       contextInfo: row['context_info'] as String? ?? '',
       deviceId: row['device_id'] as String? ?? '',
+      thinkingLevel: row['thinking_level'] as String?,
+      sessionKey: row['session_key'] as String?,
     );
     
     return Agent(
@@ -210,6 +220,8 @@ class LocalDb {
       'system_prompt': agent.config.systemPrompt,
       'context_info': agent.config.contextInfo,
       'device_id': agent.config.deviceId,
+      'thinking_level': agent.config.thinkingLevel,
+      'session_key': agent.config.sessionKey,
       'version': agent.version,
       'latency_ms': agent.latencyMs,
       'status': agent.status.name,
