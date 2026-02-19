@@ -122,22 +122,22 @@ class OpenClawService {
         _sendHandshake(data['payload'], agent);
       } else if (type == 'res') {
         final id = data['id'];
+        final payload = (data['payload'] as Map<String, dynamic>?) ?? {};
+
+        // hello-ok: check outside _pendingRequests since connect is fire-and-forget
+        if (data['ok'] == true && payload['type'] == 'hello-ok') {
+          _isConnected = true;
+          _reconnectAttempts = 0;
+          _eventController.add(OpenClawEvent(type: OpenClawEventType.connected));
+          _loadHistoryAfterConnect();
+        }
+
+        // Resolve other pending requests
         if (_pendingRequests.containsKey(id)) {
           if (data['ok'] == true) {
-            _pendingRequests[id]!.complete(data['payload'] ?? {});
-
-            // If this was the handshake response (hello-ok)
-            if (data['payload']?['type'] == 'hello-ok') {
-              _isConnected = true;
-              _reconnectAttempts = 0;
-              _eventController
-                  .add(OpenClawEvent(type: OpenClawEventType.connected));
-              // Fix 4: Load history after successful connect
-              _loadHistoryAfterConnect();
-            }
+            _pendingRequests[id]!.complete(payload);
           } else {
-            _pendingRequests[id]!
-                .completeError(data['error'] ?? 'Unknown error');
+            _pendingRequests[id]!.completeError(data['error'] ?? 'Unknown error');
           }
           _pendingRequests.remove(id);
         }
