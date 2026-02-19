@@ -62,8 +62,12 @@ class ChatNotifier extends Notifier<Map<String, ChatState>> {
 
   @override
   Map<String, ChatState> build() {
-    final agents = ref.watch(agentsProvider);
-    _loadMessagesForAgents(agents);
+    // Use listen (not watch) so agent-list changes don't reset chat state to {}
+    ref.listen(agentsProvider, (_, agents) {
+      _loadMessagesForAgents(agents);
+    });
+    // Initial load
+    _loadMessagesForAgents(ref.read(agentsProvider));
     return {};
   }
 

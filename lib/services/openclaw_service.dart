@@ -49,8 +49,8 @@ class OpenClawService {
   Future<void> connect(Agent agent) async {
     if (_isConnected) return;
 
-    // Cancel stale subscription before opening a new one
-    _subscription?.cancel();
+    // Cancel stale subscription (don't close the channel — _onDisconnected handles that)
+    await _subscription?.cancel();
 
     try {
       await _deviceIdentity.load();
@@ -215,7 +215,6 @@ class OpenClawService {
       "sessionKey": _sessionKey,
       "message": content,
       "thinking": thinking,
-      "verbose": _verboseLevel,
       "idempotencyKey": _uuid.v4(),
     };
     if (attachments != null && attachments.isNotEmpty) {

@@ -94,8 +94,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ? _EmptyConversation(agentName: agentName)
                   : ListView.builder(
                       controller: _scrollController,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 20),
+                      padding: const EdgeInsets.only(
+                          left: 16, right: 16, top: 20, bottom: 100),
                       itemCount:
                           chatState.messages.length + (hasError ? 1 : 0),
                       itemBuilder: (context, index) {
@@ -169,9 +169,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ),
               ),
 
-            // Fix 6: Tool cards
+            // Fix 6: Tool cards — collapse completed, show running individually
             if (chatState.activeTools.isNotEmpty)
-              ...chatState.activeTools.map((t) => _ToolCard(tool: t)),
+              _ToolCardSection(tools: chatState.activeTools),
 
             // Fix 7: Approval banner
             if (chatState.approvalRequest != null)
@@ -302,17 +302,46 @@ class _TabSwitcher extends StatelessWidget {
   }
 }
 
-// Fix 6: Tool card widget
-class _ToolCard extends StatelessWidget {
-  final ToolEvent tool;
-  const _ToolCard({required this.tool});
+// Fix 6: Tool card section — collapses completed tools into a summary
+class _ToolCardSection extends StatelessWidget {
+  final List<ToolEvent> tools;
+  const _ToolCardSection({required this.tools});
 
   @override
   Widget build(BuildContext context) {
-    final isRunning = tool.phase == 'start';
+    final running = tools.where((t) => t.phase == 'start').toList();
+    final completedCount = tools.where((t) => t.phase == 'end').length;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 4,
+        children: [
+          // Collapsed completed summary
+          if (completedCount > 0)
+            _toolChip(
+              icon: Icon(Icons.check_circle_outline,
+                  size: 12, color: AppColors.success),
+              label: '$completedCount tool${completedCount == 1 ? '' : 's'} completed',
+            ),
+          // Running tools shown individually
+          ...running.map((t) => _toolChip(
+                icon: const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 1.5),
+                ),
+                label: t.toolName,
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _toolChip({required Widget icon, required String label}) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(8),
@@ -321,24 +350,13 @@ class _ToolCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (isRunning)
-            const SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(strokeWidth: 1.5),
-            )
-          else
-            Icon(Icons.check_circle_outline,
-                size: 14, color: AppColors.success),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              tool.toolName,
-              style: GoogleFonts.jetBrainsMono(
-                fontSize: 11,
-                color: AppColors.textSecondary,
-              ),
-              overflow: TextOverflow.ellipsis,
+          icon,
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 11,
+              color: AppColors.textSecondary,
             ),
           ),
         ],
